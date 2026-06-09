@@ -3,13 +3,9 @@
 
 namespace flpt {
 
-    UDPServer::UDPServer(const char* port, int buffer_length):
-        m_port{ port },
-        m_buffer_length{ buffer_length },
-        m_server_address{ },
-        m_client_address{ },
-        m_server_address_length{ 0 },
-        m_Winsock_implementation{ }
+    UDPServer::UDPServer(Protocol protocol, std::string port, int buffer_length):
+        BaseSocket(protocol, port, true),
+        m_buffer_length{ buffer_length }
     {
 
     };
@@ -18,8 +14,25 @@ namespace flpt {
     };
 
 
-    void UDPServer::setVerbosity(Verbosity verbosity) {
-        BaseSocket::setVerbosity(verbosity);
+    ErrorCode UDPServer::launchServer() {
+        ErrorCode error = initializeWinsock();
+        if (error != ErrorCode::AllClear) {
+            return error;
+        }
+        error = createSocket();
+        if (error != ErrorCode::AllClear) {
+            return error;
+        }
+        error = prepServerAddress();
+        if (error != ErrorCode::AllClear) {
+            return error;
+        }
+        error = bindSocket();
+        if (error != ErrorCode::AllClear) {
+            return error;
+        }
+        return ErrorCode::AllClear;
     };
+
 
 };
