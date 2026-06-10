@@ -6,6 +6,16 @@
 
 
 namespace flpt {
+    
+    const char* k_IPv4BroadcastAll = "255.255.255.255";
+    const char* k_IPv6MulticastAll = "ff02::1";
+
+    Verbosity g_FlaschenpostVerbosity = Verbosity::ErrorLogs;
+    std::string g_FlaschenpostLastError = "No Error";
+
+    bool g_WinsockInitialized = false;
+    int g_WinsockObjectCount = 0;
+    WSADATA g_WinsockImplementation;
 
 
     void setFlptVerbosity(Verbosity verbosity) {
@@ -52,7 +62,7 @@ namespace flpt {
             case ErrorCode::GeneralError:
                 return "General Error: An Unspecified Exception has Occured";
             case ErrorCode::WinsockInitialization:
-                return "Winsock Initialization: Initialization of Winsock 2.2 has Failed with an Error";
+                return "Initialization of Winsock 2.2 has Failed with an Error";
             case ErrorCode::SocketCreationFailed:
                 return "Socket Creation Failed";
             case ErrorCode::SocketAllowDualStackError:
@@ -67,8 +77,21 @@ namespace flpt {
                 return "Attempting to Bind Client Socket";
             case ErrorCode::SocketBindFailed:
                 return "Binding Socket Failed with an Error";
+            case ErrorCode::WinsockTermination:
+                return "Termination of Winsock 2.2 has Failed with an Error";
+            case ErrorCode::CreateSocketBeforeInitialize:
+                return "Socket Must be Initialized Before it is Created";
+            case ErrorCode::PrepAddressBeforeCreateSocket:
+                return "Socket Must be Created Before Address Prepped";
+            case ErrorCode::BindSocketBeforePrepAddress:
+                return "Socket Must be Address Prepped Before being Bound";
+            case ErrorCode::AttemptingToServerLoopClient:
+                return "Attempting to Start Server Loop On Client";
+            case ErrorCode::ServerLoopBeforeBound:
+                return "Socket Must be Bound Before Starting Listening";
             
             default:
+                return "Unknown Error";
                 break;
         }
     };
@@ -85,12 +108,24 @@ namespace flpt {
             }
 
             g_WinsockInitialized = true;
-            logMessage("Winsock Initialization Complete!\n");
-            return ErrorCode::AllClear;
+            logMessage("Winsock Initialization Complete!");
         }else {
-            logMessage("Winsock Initialization Already Completed\n");
-            return ErrorCode::AllClear;
+            logMessage("Winsock Initialization Already Completed");
         }
+        g_WinsockObjectCount += 1;
+        return ErrorCode::AllClear;
+    };
+    ErrorCode terminateGlobalWinsock() {
+        g_WinsockObjectCount -= 1;
+        if (g_WinsockObjectCount == 0) {
+            logMessage("Terminating Winsock...");
+            int error_code = WSACleanup();
+            if (error_code == SOCKET_ERROR) {
+                logError("Winsock Termination Failed with Error Code: %d", WSAGetLastError());
+                return ErrorCode::WinsockTermination;
+            }
+        }
+        return ErrorCode::AllClear;
     };
 
 };

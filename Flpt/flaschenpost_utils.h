@@ -9,17 +9,11 @@
 
 namespace flpt {
 
-    const char* k_IPv4BroadcastAll = "255.255.255.255";
-    const char* k_IPv6MulticastAll = "ff02::1";
-
     enum class Verbosity {
         NoLogs = 0,
         ErrorLogs = 1,
         AllLogs = 2
     };
-
-    Verbosity g_FlaschenpostVerbosity = Verbosity::ErrorLogs;
-    std::string g_FlaschenpostLastError = "No Error";
 
     void setFlptVerbosity(Verbosity verbosity);
     std::string getLastFlptError();
@@ -34,6 +28,18 @@ namespace flpt {
         Both_PreferIPv6 = 3
     };
 
+    enum class SocketState {
+        Uninitialized = 0,
+        Initialized = 1,
+        Created = 2,
+        AddressPrepped = 3,
+        Bound = 4,
+        Connected = 5,
+        Broadcasting = 6,
+        Multicasting = 7,
+        ServerListening = 8
+    };
+
     enum class ErrorCode {
         AllClear = 0,
         GeneralError = 1,
@@ -44,16 +50,29 @@ namespace flpt {
         ServerAddressGetInfoError = 6,
         ServerAddressNoValidIP = 7,
         AttemptingToBindClient = 8,
-        SocketBindFailed = 9
+        SocketBindFailed = 9,
+        WinsockTermination = 10,
+        CreateSocketBeforeInitialize = 11,
+        PrepAddressBeforeCreateSocket = 12,
+        BindSocketBeforePrepAddress = 13,
+        AttemptingToServerLoopClient = 14,
+        ServerLoopBeforeBound = 15
     };
 
     std::string getErrorCodeDescription(ErrorCode error);
 
-
-    bool g_WinsockInitialized = false;
-    WSADATA g_WinsockImplementation;
-
     ErrorCode initializeGlobalWinsock();
+    ErrorCode terminateGlobalWinsock();
+
+    extern const char* k_IPv4BroadcastAll;
+    extern const char* k_IPv6MulticastAll;
+
+    extern Verbosity g_FlaschenpostVerbosity;
+    extern std::string g_FlaschenpostLastError;
+
+    extern bool g_WinsockInitialized;
+    extern int g_WinsockObjectCount;
+    extern WSADATA g_WinsockImplementation;
 
 };
 

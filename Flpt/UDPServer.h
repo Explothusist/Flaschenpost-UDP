@@ -1,6 +1,6 @@
 
-#ifndef FLASCHENPOST_CLIENT_
-#define FLASCHENPOST_CLIENT_
+#ifndef FLASCHENPOST_SERVER_
+#define FLASCHENPOST_SERVER_
 
 #include "flaschenpost_utils.h"
 #include "BaseSocket.h"

@@ -6,7 +6,7 @@
 namespace flpt {
 
     BaseSocket::BaseSocket(Protocol protocol, std::string port, bool is_server):
-        BaseSocket(protocol, nullptr, port, is_server)
+        BaseSocket(protocol, "", port, is_server)
     {
 
     };
@@ -18,7 +18,9 @@ namespace flpt {
         m_socket{ INVALID_SOCKET },
         m_server_address{ },
         m_server_address_length{ 0 },
-        m_Winsock_implementation{ }
+        m_Winsock_implementation{ },
+        m_state{ SocketState::Uninitialized },
+        m_network_loop{ }
     {
 
     };
@@ -26,14 +28,32 @@ namespace flpt {
         if (m_socket != INVALID_SOCKET) {
             closesocket(m_socket);
         }
-        WSACleanup();
+        if (m_state >= SocketState::Initialized) {
+            terminateGlobalWinsock();
+        }
     };
     
     ErrorCode BaseSocket::initializeWinsock() {
-        return initializeGlobalWinsock();
+        if (m_state >= SocketState::Initialized) {
+            logMessage("Socket Initialization Already Completed");
+            return ErrorCode::AllClear;
+        }
+        ErrorCode error_code = initializeGlobalWinsock();
+        if (error_code == ErrorCode::AllClear) {
+            m_state = SocketState::Initialized;
+        }
+        return error_code;
     };
     ErrorCode BaseSocket::createSocket() {
         logMessage("Creating Socket...");
+        if (m_state <= SocketState::Uninitialized) {
+            logError("Socket Must be Initialized Before it is Created");
+            return ErrorCode::CreateSocketBeforeInitialize;
+        }
+        if (m_state >= SocketState::Created) {
+            logMessage("Socket Has Already Been Created");
+            return ErrorCode::AllClear;
+        }
 
         // if (m_protocol == Protocol::IPv4Only) {
         if (!usesIPv6()) {
@@ -65,10 +85,19 @@ namespace flpt {
         }
 
         logMessage("Socket Creation Complete!\n");
+        m_state = SocketState::Created;
         return ErrorCode::AllClear;
     };
     ErrorCode BaseSocket::prepServerAddress() {
         logMessage("Preparing Server Address Data...");
+        if (m_state <= SocketState::Initialized) {
+            logError("Socket Must be Created Before Address Prepped");
+            return ErrorCode::PrepAddressBeforeCreateSocket;
+        }
+        if (m_state >= SocketState::AddressPrepped) {
+            logMessage("Socket Has Already Been Address Prepped");
+            return ErrorCode::AllClear;
+        }
 
         addrinfo hints{};
         addrinfo* server_info = nullptr;
@@ -105,7 +134,7 @@ namespace flpt {
         for (addrinfo* current = server_info; current != nullptr; current = current->ai_next) {
             if (current->ai_socktype == SOCK_DGRAM && current->ai_protocol == IPPROTO_UDP) {
                 // if (m_protocol == Protocol::IPv4Only || m_protocol == Protocol::Both_PreferIPv4) {
-                if (prefersIPv4()) {
+                if (!usesIPv6() || (prefersIPv4() && !m_is_server)) {
                     if (current->ai_family == AF_INET) {
                         best = current;
                         break;
@@ -125,15 +154,18 @@ namespace flpt {
             }
         }
         if (best == nullptr) {
+            freeaddrinfo(server_info);
             logError("Preparing Server Address Data: getaddrinfo() Returned No Valid IP: Error Code: %s", gai_strerror(error_code));
             return ErrorCode::ServerAddressNoValidIP;
         }
         // Finally, set up the data
+        memset(&m_server_address, 0, sizeof(m_server_address));
         memcpy(&m_server_address, best->ai_addr, best->ai_addrlen);
         m_server_address_length = best->ai_addrlen;
         freeaddrinfo(server_info);
 
         logMessage("Server Address Data Prepared!\n");
+        m_state = SocketState::AddressPrepped;
         return ErrorCode::AllClear;
     };
     ErrorCode BaseSocket::prepBroadcastAddress() {
@@ -255,6 +287,14 @@ namespace flpt {
             logError("Attempting to Bind Client Socket");
             return ErrorCode::AttemptingToBindClient;
         }
+        if (m_state <= SocketState::Created) {
+            logError("Socket Must be Address Prepped Before being Bound");
+            return ErrorCode::BindSocketBeforePrepAddress;
+        }
+        if (m_state >= SocketState::Bound) {
+            logMessage("Socket Has Already Been Bound");
+            return ErrorCode::AllClear;
+        }
         logMessage("Binding Socket...");
 
         int error_code = bind(m_socket, (struct sockaddr*)&m_server_address, m_server_address_length);
@@ -264,12 +304,52 @@ namespace flpt {
         }
 
         logMessage("Binding Socket Complete!\n");
+        m_state = SocketState::Bound;
+        return ErrorCode::AllClear;
+    };
+    ErrorCode BaseSocket::serverStartListening() {
+        if (!m_is_server) {
+            logError("Attempting to Start Server Loop On Client");
+            return ErrorCode::AttemptingToServerLoopClient;
+        }
+        if (m_state <= SocketState::AddressPrepped) {
+            logError("Socket Must be Bound Before Starting Listening");
+            return ErrorCode::ServerLoopBeforeBound;
+        }
+        if (m_state >= SocketState::ServerListening) {
+            logMessage("Socket Is Already Listening");
+            return ErrorCode::AllClear;
+        }
+
+        m_network_loop = std::jthread(&BaseSocket::ServerListeningLoop, this);
+
+        logMessage("Binding Socket Complete!\n");
+        m_state = SocketState::ServerListening;
         return ErrorCode::AllClear;
     };
 
 
     void BaseSocket::setTargetIPAddress(std::string ip_address) {
         m_ip_address = ip_address;
+        if (m_state >= SocketState::AddressPrepped) {
+            m_state = SocketState::Created;
+        }
+    };
+
+    
+    void BaseSocket::ServerListeningLoop(std::stop_token stop_token) {
+        while (!stop_token.stop_requested()) {
+
+        }
+    };
+    void BaseSocket::ClientToServerLoop(std::stop_token stop_token) {
+
+    };
+    void BaseSocket::ClientBroadcastLoop(std::stop_token stop_token) {
+
+    };
+    void BaseSocket::ClientMulticastLoop(std::stop_token stop_token) {
+
     };
 
     

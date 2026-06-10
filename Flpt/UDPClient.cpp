@@ -15,7 +15,6 @@ namespace flpt {
 
 
     ErrorCode UDPClient::broadcastLocateServer() {
-        return ErrorCode::AllClear;
         ErrorCode error = initializeWinsock();
         if (error != ErrorCode::AllClear) {
             return error;
@@ -38,7 +37,6 @@ namespace flpt {
         return ErrorCode::AllClear;
     };
     ErrorCode UDPClient::connectServer(std::string ip_address) {
-        return ErrorCode::AllClear;
         ErrorCode error = initializeWinsock();
         if (error != ErrorCode::AllClear) {
             return error;
