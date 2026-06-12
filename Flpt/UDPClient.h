@@ -16,7 +16,6 @@ namespace flpt {
             ErrorCode connectServer(std::string ip_address);
 
         private:
-            int m_buffer_length;
     };
 
 };

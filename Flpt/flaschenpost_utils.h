@@ -15,12 +15,6 @@ namespace flpt {
         AllLogs = 2
     };
 
-    void setFlptVerbosity(Verbosity verbosity);
-    std::string getLastFlptError();
-    void logMessage(const char* format, ...);
-    void logError(const char* format, ...);
-
-
     enum class Protocol {
         IPv4Only = 0,
         IPv6Only = 1,
@@ -56,13 +50,28 @@ namespace flpt {
         PrepAddressBeforeCreateSocket = 12,
         BindSocketBeforePrepAddress = 13,
         AttemptingToServerLoopClient = 14,
-        ServerLoopBeforeBound = 15
+        ServerLoopBeforeBound = 15,
+        ServerReceiveBytesFailed = 16,
+        ServerSendBytesFailed = 17,
+        SocketSetRecvTimeoutError = 18,
+        AttemptingToAbortServerLoopClient = 19,
+        ServerAbortBeforeStart = 20
     };
 
+
+    void setFlptVerbosity(Verbosity verbosity);
+
+    std::string getLastFlptError();
+    void logMessage(const char* format, ...);
+    void logError(const char* format, ...);
     std::string getErrorCodeDescription(ErrorCode error);
 
     ErrorCode initializeGlobalWinsock();
     ErrorCode terminateGlobalWinsock();
+
+    void setFlptNetworkRetries(int retries);
+    void setFlptNetworkTimeout(bool has_timeout);
+    void setFlptNetworkTimeout(bool has_timeout, int timeout_ms);
 
     extern const char* k_IPv4BroadcastAll;
     extern const char* k_IPv6MulticastAll;
@@ -73,6 +82,10 @@ namespace flpt {
     extern bool g_WinsockInitialized;
     extern int g_WinsockObjectCount;
     extern WSADATA g_WinsockImplementation;
+
+    extern int g_FlaschenpostNetworkRetries;
+    extern int g_FlaschenpostNetworkTimeoutMS;
+    extern bool g_FlaschenpostNetworkHasTimeout;
 
 };
 

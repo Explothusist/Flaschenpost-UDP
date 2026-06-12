@@ -4,8 +4,7 @@
 namespace flpt {
 
     UDPClient::UDPClient(Protocol protocol, std::string port, int buffer_length):
-        BaseSocket(protocol, port, false),
-        m_buffer_length{ buffer_length }
+        BaseSocket(protocol, port, buffer_length, false)
     {
 
     };

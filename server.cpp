@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <string>
 #include <WS2tcpip.h>
+#include <chrono>
 
 #include "Flpt/flashenpost.h"
 
@@ -32,6 +33,10 @@ int main() {
     flpt::UDPServer m_server(flpt::Protocol::Both_PreferIPv4, kServerPort, kServerBufferLength);
 
     m_server.launchServer();
+
+    while (m_server.isServerRunning()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
 
     // SOCKET m_socket;
     // // sockaddr_in m_server_address; // IP Address and Port

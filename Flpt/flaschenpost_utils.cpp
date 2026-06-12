@@ -17,6 +17,10 @@ namespace flpt {
     int g_WinsockObjectCount = 0;
     WSADATA g_WinsockImplementation;
 
+    int g_FlaschenpostNetworkRetries = 20;
+    int g_FlaschenpostNetworkTimeoutMS = 200;
+    bool g_FlaschenpostNetworkHasTimeout = true;
+
 
     void setFlptVerbosity(Verbosity verbosity) {
         g_FlaschenpostVerbosity = verbosity;
@@ -89,6 +93,12 @@ namespace flpt {
                 return "Attempting to Start Server Loop On Client";
             case ErrorCode::ServerLoopBeforeBound:
                 return "Socket Must be Bound Before Starting Listening";
+            case ErrorCode::ServerReceiveBytesFailed:
+                return "Server Receive Bytes Failed with Error";
+            case ErrorCode::ServerSendBytesFailed:
+                return "Server Send Bytes Failed with Error";
+            case ErrorCode::SocketSetRecvTimeoutError:
+                return "Socket Options 'Recv Timeout' Enable Failed with Error";
             
             default:
                 return "Unknown Error";
@@ -126,6 +136,17 @@ namespace flpt {
             }
         }
         return ErrorCode::AllClear;
+    };
+
+    void setFlptNetworkRetries(int retries) {
+        g_FlaschenpostNetworkRetries = retries;
+    };
+    void setFlptNetworkTimeout(bool has_timeout) {
+        g_FlaschenpostNetworkHasTimeout = has_timeout;
+    };
+    void setFlptNetworkTimeout(bool has_timeout, int timeout_ms) {
+        g_FlaschenpostNetworkHasTimeout = has_timeout;
+        g_FlaschenpostNetworkTimeoutMS = timeout_ms;
     };
 
 };

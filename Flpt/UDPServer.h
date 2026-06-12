@@ -15,10 +15,11 @@ namespace flpt {
             ~UDPServer();
 
             ErrorCode launchServer();
+            ErrorCode abortServer();
+
+            bool isServerRunning();
 
         private:
-            int m_buffer_length;
-
     };
 
 };

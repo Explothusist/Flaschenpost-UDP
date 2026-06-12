@@ -4,8 +4,7 @@
 namespace flpt {
 
     UDPServer::UDPServer(Protocol protocol, std::string port, int buffer_length):
-        BaseSocket(protocol, port, true),
-        m_buffer_length{ buffer_length }
+        BaseSocket(protocol, port, buffer_length, true)
     {
 
     };
@@ -31,7 +30,22 @@ namespace flpt {
         if (error != ErrorCode::AllClear) {
             return error;
         }
+        error = serverStartListening();
+        if (error != ErrorCode::AllClear) {
+            return error;
+        }
         return ErrorCode::AllClear;
+    };
+    ErrorCode UDPServer::abortServer() {
+        ErrorCode error = serverAbortListening();
+        if (error != ErrorCode::AllClear) {
+            return error;
+        }
+        return ErrorCode::AllClear;
+    };
+
+    bool UDPServer::isServerRunning() {
+        return isNetworkLoopRunning();
     };
 
 
