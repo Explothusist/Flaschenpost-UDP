@@ -13,15 +13,23 @@ namespace flpt {
 
     class BaseSocket {
         public:
-            BaseSocket(Protocol protocol, std::string port, size_t buffer_length, bool is_server);
-            BaseSocket(Protocol protocol, std::string ip_address, std::string port, size_t buffer_length, bool is_server);
+            BaseSocket(Protocol protocol, std::string port, bool is_server);
+            BaseSocket(Protocol protocol, std::string ip_address, std::string port, bool is_server);
             ~BaseSocket();
 
+            // Client and Server
             ErrorCode initializeWinsock();
             ErrorCode createSocket();
             ErrorCode prepServerAddress();
+
+            // Client Only
             ErrorCode prepBroadcastAddress(); // IPv4
             ErrorCode prepMulticastAddress(); // IPv6
+            ErrorCode clientStartSending();
+            ErrorCode clientStartBroadcasting(); // IPv4
+            ErrorCode clientStartMulticasting(); // IPv6
+
+            // Server Only
             ErrorCode bindSocket();
             ErrorCode serverStartListening();
             ErrorCode serverAbortListening();
@@ -38,10 +46,14 @@ namespace flpt {
             SocketState getSocketState();
             void recordNetworkLoopError(ErrorCode error);
             ErrorCode getNetworkLoopError();
-            bool isNetworkLoopRunning();
+            bool isServerLoopRunning();
+            bool isClientLoopRunning();
+            bool isClientBroadcastRunning();
 
-            // Multithreading Functions
+            // Multithreading Functions - Server
             void ServerListeningLoop(std::stop_token stop_token);
+
+            // Multithreading Functions - Client
             void ClientToServerLoop(std::stop_token stop_token);
             void ClientBroadcastLoop(std::stop_token stop_token);
             void ClientMulticastLoop(std::stop_token stop_token);
@@ -50,13 +62,12 @@ namespace flpt {
             Protocol m_protocol;
             std::string m_ip_address;
             std::string m_port;
-            size_t m_buffer_length;
             bool m_is_server;
 
-            SOCKET m_socket;
-            sockaddr_storage m_server_address;
-            socklen_t m_server_address_length;
-            WSADATA m_Winsock_implementation;
+            SOCKET m_socket; // SHOULD BE ATOMIC?
+            sockaddr_storage m_server_address; // SHOULD BE ATOMIC?
+            socklen_t m_server_address_length; // SHOULD BE ATOMIC?
+            WSADATA m_Winsock_implementation; // SHOULD BE ATOMIC?
 
             std::jthread m_network_loop;
 
@@ -66,7 +77,10 @@ namespace flpt {
 
             // Network Loop ONLY
             sockaddr_storage m_client_address;
+            sockaddr_storage m_sender_address;
+            int m_buffer_length;
             std::vector<char> m_incoming_data_buffer;
+            std::vector<char> m_sending_data_buffer;
             int m_num_bytes_received;
             char m_host_data[NI_MAXHOST];
             char m_service_data[NI_MAXSERV];

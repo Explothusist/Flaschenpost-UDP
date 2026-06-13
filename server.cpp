@@ -24,13 +24,20 @@ constexpr int kServerBufferLength = 512;
 // constexpr int kServerPort = 8888;
 constexpr const char* kServerPort = "8888";
 
+/*
+    IPv4Only        - Works
+    IPv6Only        - Works
+    Both_PreferIPv4 - Works
+    Both_PreferIPv6 - Works
+*/
 
 int main() {
     printf("Program Alive!\n");
 
     flpt::setFlptVerbosity(flpt::Verbosity::AllLogs);
+    flpt::setFlptBufferLength(kServerBufferLength);
 
-    flpt::UDPServer m_server(flpt::Protocol::Both_PreferIPv4, kServerPort, kServerBufferLength);
+    flpt::UDPServer m_server(flpt::Protocol::Both_PreferIPv6, kServerPort);
 
     m_server.launchServer();
 

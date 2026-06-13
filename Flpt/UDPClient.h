@@ -9,11 +9,14 @@ namespace flpt {
 
     class UDPClient : private BaseSocket {
         public:
-            UDPClient(Protocol protocol, std::string port, int buffer_length);
+            UDPClient(Protocol protocol, std::string port);
             ~UDPClient();
 
             ErrorCode broadcastLocateServer();
             ErrorCode connectServer(std::string ip_address);
+
+            bool isConnectedToServer();
+            bool isBroadcastLoopRunning();
 
         private:
     };

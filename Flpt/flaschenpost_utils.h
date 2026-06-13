@@ -27,10 +27,10 @@ namespace flpt {
         Initialized = 1,
         Created = 2,
         AddressPrepped = 3,
-        Bound = 4,
-        Connected = 5,
-        Broadcasting = 6,
-        Multicasting = 7,
+        ServerBound = 4,
+        ClientConnected = 5,
+        ClientBroadcasting = 6,
+        ClientMulticasting = 7,
         ServerListening = 8
     };
 
@@ -55,11 +55,17 @@ namespace flpt {
         ServerSendBytesFailed = 17,
         SocketSetRecvTimeoutError = 18,
         AttemptingToAbortServerLoopClient = 19,
-        ServerAbortBeforeStart = 20
+        ServerAbortBeforeStart = 20,
+        AttemptingToClientLoopServer = 21,
+        ClientLoopBeforePrepAddress = 22,
+        ClientSendBytesFailed = 23,
+        ClientReceiveBytesFailed = 24
     };
 
 
     void setFlptVerbosity(Verbosity verbosity);
+
+    bool stateIsAtLeast(SocketState current, SocketState testing);
 
     std::string getLastFlptError();
     void logMessage(const char* format, ...);
@@ -70,8 +76,10 @@ namespace flpt {
     ErrorCode terminateGlobalWinsock();
 
     void setFlptNetworkRetries(int retries);
-    void setFlptNetworkTimeout(bool has_timeout);
-    void setFlptNetworkTimeout(bool has_timeout, int timeout_ms);
+    // void setFlptNetworkTimeout(bool has_timeout);
+    // void setFlptNetworkTimeout(bool has_timeout, int timeout_ms);
+    void setFlptNetworkTimeout(int timeout_ms);
+    void setFlptBufferLength(int buffer_length);
 
     extern const char* k_IPv4BroadcastAll;
     extern const char* k_IPv6MulticastAll;
@@ -85,7 +93,8 @@ namespace flpt {
 
     extern int g_FlaschenpostNetworkRetries;
     extern int g_FlaschenpostNetworkTimeoutMS;
-    extern bool g_FlaschenpostNetworkHasTimeout;
+    // extern bool g_FlaschenpostNetworkHasTimeout;
+    extern int g_FlaschenpostNetworkBufferLength;
 
 };
 

@@ -3,8 +3,8 @@
 
 namespace flpt {
 
-    UDPServer::UDPServer(Protocol protocol, std::string port, int buffer_length):
-        BaseSocket(protocol, port, buffer_length, true)
+    UDPServer::UDPServer(Protocol protocol, std::string port):
+        BaseSocket(protocol, port, true)
     {
 
     };
@@ -45,7 +45,7 @@ namespace flpt {
     };
 
     bool UDPServer::isServerRunning() {
-        return isNetworkLoopRunning();
+        return isServerLoopRunning();
     };
 
 

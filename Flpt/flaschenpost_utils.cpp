@@ -19,7 +19,8 @@ namespace flpt {
 
     int g_FlaschenpostNetworkRetries = 20;
     int g_FlaschenpostNetworkTimeoutMS = 200;
-    bool g_FlaschenpostNetworkHasTimeout = true;
+    // bool g_FlaschenpostNetworkHasTimeout = true;
+    int g_FlaschenpostNetworkBufferLength = 4096;
 
 
     void setFlptVerbosity(Verbosity verbosity) {
@@ -99,6 +100,18 @@ namespace flpt {
                 return "Server Send Bytes Failed with Error";
             case ErrorCode::SocketSetRecvTimeoutError:
                 return "Socket Options 'Recv Timeout' Enable Failed with Error";
+            case ErrorCode::AttemptingToAbortServerLoopClient:
+                return "Attempting to Abort Server Loop On Client";
+            case ErrorCode::ServerAbortBeforeStart:
+                return "Cannot Abort Server if not Started Listening";
+            case ErrorCode::AttemptingToClientLoopServer:
+                return "Attempting to Start Client Loop On Server";
+            case ErrorCode::ClientLoopBeforePrepAddress:
+                return "Socket Address Must be Prepped Before Starting Listening";
+            case ErrorCode::ClientSendBytesFailed:
+                return "Client Send Bytes Failed with Error";
+            case ErrorCode::ClientReceiveBytesFailed:
+                return "Client Receive Bytes Failed with Error";
             
             default:
                 return "Unknown Error";
@@ -106,6 +119,25 @@ namespace flpt {
         }
     };
     
+    
+    int getStateStageValue(SocketState state) {
+        switch (state) {
+            case SocketState::Uninitialized: return 0;
+            case SocketState::Initialized: return 1;
+            case SocketState::Created: return 2;
+            case SocketState::AddressPrepped: return 3;
+            case SocketState::ServerBound: return 4;
+            case SocketState::ClientConnected: return 5;
+            case SocketState::ClientBroadcasting: return 5;
+            case SocketState::ClientMulticasting: return 5;
+            case SocketState::ServerListening: return 5;
+        }
+        logError("Unknown State: %d", state);
+        return -1;
+    };
+    bool stateIsAtLeast(SocketState current, SocketState testing) {
+        return getStateStageValue(current) >= getStateStageValue(testing);
+    };
 
     ErrorCode initializeGlobalWinsock() {
         if (!g_WinsockInitialized) {
@@ -141,12 +173,18 @@ namespace flpt {
     void setFlptNetworkRetries(int retries) {
         g_FlaschenpostNetworkRetries = retries;
     };
-    void setFlptNetworkTimeout(bool has_timeout) {
-        g_FlaschenpostNetworkHasTimeout = has_timeout;
-    };
-    void setFlptNetworkTimeout(bool has_timeout, int timeout_ms) {
-        g_FlaschenpostNetworkHasTimeout = has_timeout;
+    // void setFlptNetworkTimeout(bool has_timeout) {
+    //     g_FlaschenpostNetworkHasTimeout = has_timeout;
+    // };
+    // void setFlptNetworkTimeout(bool has_timeout, int timeout_ms) {
+    //     g_FlaschenpostNetworkHasTimeout = has_timeout;
+    //     g_FlaschenpostNetworkTimeoutMS = timeout_ms;
+    // };
+    void setFlptNetworkTimeout(int timeout_ms) {
         g_FlaschenpostNetworkTimeoutMS = timeout_ms;
+    };
+    void setFlptBufferLength(int buffer_length) {
+        g_FlaschenpostNetworkBufferLength = buffer_length;
     };
 
 };

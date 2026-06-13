@@ -11,7 +11,7 @@ namespace flpt {
 
     class UDPServer : private BaseSocket {
         public:
-            UDPServer(Protocol protocol, std::string port, int buffer_length);
+            UDPServer(Protocol protocol, std::string port);
             ~UDPServer();
 
             ErrorCode launchServer();
