@@ -2,6 +2,12 @@
 #ifndef FLASCHENPOST_UTILS_
 #define FLASCHENPOST_UTILS_
 
+#ifdef FLPT_BUILD_DLL
+#define FLPT_API __declspec(dllexport)
+#else
+#define FLPT_API __declspec(dllimport)
+#endif
+
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <string>
@@ -31,7 +37,9 @@ namespace flpt {
         ClientConnected = 5,
         ClientBroadcasting = 6,
         ClientMulticasting = 7,
-        ServerListening = 8
+        ServerListening = 8,
+        ClientBroadcastPrepped = 9,
+        ClientMulticastPrepped = 10
     };
 
     enum class ErrorCode {
@@ -59,30 +67,37 @@ namespace flpt {
         AttemptingToClientLoopServer = 21,
         ClientLoopBeforePrepAddress = 22,
         ClientSendBytesFailed = 23,
-        ClientReceiveBytesFailed = 24
+        ClientReceiveBytesFailed = 24,
+        AttemptingToPrepBroadcastOnServer = 25,
+        BroadcastOnIPv6Only = 26,
+        ClientBroadcastBeforePrepBroadcast = 27,
+        ServerCouldNotBeLocated = 28,
     };
 
 
-    void setFlptVerbosity(Verbosity verbosity);
+    void FLPT_API setFlptVerbosity(Verbosity verbosity);
 
     bool stateIsAtLeast(SocketState current, SocketState testing);
 
-    std::string getLastFlptError();
+    std::string FLPT_API getLastFlptError();
     void logMessage(const char* format, ...);
     void logError(const char* format, ...);
-    std::string getErrorCodeDescription(ErrorCode error);
+    std::string FLPT_API getErrorCodeDescription(ErrorCode error);
 
     ErrorCode initializeGlobalWinsock();
     ErrorCode terminateGlobalWinsock();
 
-    void setFlptNetworkRetries(int retries);
+    void FLPT_API setFlptNetworkRetries(int retries);
     // void setFlptNetworkTimeout(bool has_timeout);
     // void setFlptNetworkTimeout(bool has_timeout, int timeout_ms);
-    void setFlptNetworkTimeout(int timeout_ms);
-    void setFlptBufferLength(int buffer_length);
+    void FLPT_API setFlptNetworkTimeout(int timeout_ms);
+    void FLPT_API setFlptBufferLength(int buffer_length);
 
     extern const char* k_IPv4BroadcastAll;
     extern const char* k_IPv6MulticastAll;
+
+    extern const char* k_BroadcastMessage;
+    extern const int k_BroadcastMessageLength;
 
     extern Verbosity g_FlaschenpostVerbosity;
     extern std::string g_FlaschenpostLastError;

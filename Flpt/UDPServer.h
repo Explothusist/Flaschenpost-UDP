@@ -9,7 +9,7 @@
 
 namespace flpt {
 
-    class UDPServer : private BaseSocket {
+    class FLPT_API UDPServer : private BaseSocket {
         public:
             UDPServer(Protocol protocol, std::string port);
             ~UDPServer();

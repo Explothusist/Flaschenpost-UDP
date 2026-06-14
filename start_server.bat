@@ -1,9 +1,21 @@
-REM REM -> comment
-make || ( REM && -> if returns 0, || -> if returns 1
-    REM echo -> print to console
+REM REM - comment
+
+cd Flpt
+make
+cd ..
+REM /Y - auto override
+copy Flpt\Flaschenpost.dll /Y
+copy Flpt\libFlaschenpost.a /Y
+
+REM && - if returns 0, || - if returns 1
+make server.exe || (
+    REM echo - print to console
     echo Build Failed.
-    pause REM pause -> wait until user input
-    exit /b 1 REM /b -> only exits the script, leaves cmd open, 1 -> error code
+    REM pause - wait until user input
+    pause 
+    REM /b - only exits the script, leaves cmd open, 1 - error code
+    exit /b 1 
 )
 
-server REM runs the new exe file
+REM runs the new exe file
+server 

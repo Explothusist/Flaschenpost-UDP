@@ -27,6 +27,20 @@ namespace flpt {
             if (error != ErrorCode::AllClear) {
                 return error;
             }
+            error = clientStartBroadcasting();
+            if (error != ErrorCode::AllClear) {
+                return error;
+            }
+            while (isBroadcastLoopRunning()) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            if (getSocketState() == SocketState::AddressPrepped) {
+                // This means that it found the server
+                logMessage("Starting Client to Server Connection");
+                clientStartSending();
+            }else {
+                logError("Server could not be located by the broadcasting client");
+            }
         }else {
             error = prepMulticastAddress();
             if (error != ErrorCode::AllClear) {

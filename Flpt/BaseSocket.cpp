@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <chrono>
+#include <cstring>
 
 /*
     Future Notes:
@@ -199,60 +200,31 @@ namespace flpt {
     
     // Client Only
     ErrorCode BaseSocket::prepBroadcastAddress() {
-        // logMessage("Preparing Server Address Data...");
+        logMessage("Preparing Broadcast Address Data...");
+        if (m_is_server) {
+            logError("Cannot Prep Broadcast Address on Server");
+            return ErrorCode::AttemptingToPrepBroadcastOnServer;
+        }
+        if (!usesIPv4()) {
+            logError("Broadcast is IPv4 Only, Use Multicast for IPv6");
+            return ErrorCode::BroadcastOnIPv6Only;
+        }
+        if (!stateIsAtLeast(getSocketState(), SocketState::Created)) {
+            logError("Socket Must be Created Before Broadcast Address Prepped");
+            return ErrorCode::PrepAddressBeforeCreateSocket;
+        }
+        if (stateIsAtLeast(getSocketState(), SocketState::ClientBroadcastPrepped)) {
+            logMessage("Socket Has Already Been Address Prepped");
+            return ErrorCode::AllClear;
+        }
 
-        // addrinfo hints{};
-        // addrinfo* server_info = nullptr;
-        // if (m_protocol == Protocol::IPv4Only) {
-        //     hints.ai_family = AF_INET;
-        // }else if (m_protocol == Protocol::IPv6Only) {
-        //     hints.ai_family = AF_INET6;
-        // }else {
-        //     hints.ai_family = AF_UNSPEC;
-        // }
-        // hints.ai_socktype = SOCK_DGRAM;
-        // hints.ai_protocol = IPPROTO_UDP;
-        // if (m_is_server) {
-        //     hints.ai_flags = AI_PASSIVE; // Say "I'm a server"
-        // }
-        // std::string ip_address = nullptr;
-        // if (!m_is_server) {
-        //     if (m_ip_address != nullptr) {
-        //         ip_address = m_ip_address;
-        //     }else {
-        //         if (m_protocol == Protocol::IPv4Only || m_protocol == Protocol::Both_PreferIPv4) {
-        //             ip_address = k_IPv4BroadcastAll;
-        //         }else {
-        //             ip_address = k_IPv6MulticastAll;
-        //         }
-        //     }
-        // } 
-        // int error_code = getaddrinfo(ip_address, m_port, &hints, &server_info); // Addr = nullptr and AI_PASSIVE mean bind to all
-        // if (error_code != 0) {
-        //     logError("Preparing Server Address Data: getaddrinfo() Failed: Error Code: %s", gai_strerror(error_code));
-        //     return ErrorCode::ServerAddressGetInfoError;
-        // }
-        // // Locate the most fitting IP address
-        // addrinfo* best = server_info;
-        // for (addrinfo* current = server_info; current != nullptr; current = current->ai_next) {
-        //     if (m_protocol == Protocol::IPv4Only || m_protocol == Protocol::Both_PreferIPv4) {
-        //         if (current->ai_family == AF_INET) {
-        //             best = current;
-        //             break;
-        //         }
-        //     }else {
-        //         if (current->ai_family == AF_INET6) {
-        //             best = current;
-        //             break;
-        //         }
-        //     }
-        // }
-        // // Finally, set up the data
-        // memcpy(&m_server_address, best->ai_addr, best->ai_addrlen);
-        // m_server_address_length = best->ai_addrlen;
-        // freeaddrinfo(server_info);
+        setTargetIPAddress(k_IPv4BroadcastAll);
+        ErrorCode error = prepServerAddress();
+        if (error != ErrorCode::AllClear) {
+            return error;
+        }
 
-        // logMessage("Server Address Data Prepared!\n");
+        setSocketState(SocketState::ClientBroadcastPrepped);
         return ErrorCode::AllClear;
     };
     ErrorCode BaseSocket::prepMulticastAddress() {
@@ -335,6 +307,25 @@ namespace flpt {
         return ErrorCode::AllClear;
     };
     ErrorCode BaseSocket::clientStartBroadcasting() {
+        if (m_is_server) {
+            logError("Attempting to Start Client Loop On Server");
+            return ErrorCode::AttemptingToClientLoopServer;
+        }
+        if (getSocketState() != SocketState::ClientBroadcastPrepped) {
+            logError("Socket Broadcast Address Must be Prepped Before Starting Broadcasting");
+            return ErrorCode::ClientBroadcastBeforePrepBroadcast;
+        }
+        if (stateIsAtLeast(getSocketState(), SocketState::ClientConnected)) {
+            logMessage("Client Socket Is Already Connected");
+            return ErrorCode::AllClear;
+        }
+
+        setSocketState(SocketState::ClientBroadcasting);
+        m_network_loop = std::jthread([this](std::stop_token token) {
+            this->ClientBroadcastLoop(std::move(token));
+        });
+
+        logMessage("Client Broadcasting!\n");
         return ErrorCode::AllClear;
     };
     ErrorCode BaseSocket::clientStartMulticasting() {
@@ -494,15 +485,15 @@ namespace flpt {
         }
     };
     void BaseSocket::ClientToServerLoop(std::stop_token stop_token) {
-        bool end_server_loop = false;
+        bool end_client_loop = false;
         int failed_attempts = 0;
-        while (!stop_token.stop_requested() && !end_server_loop) {
+        while (!stop_token.stop_requested() && !end_client_loop) {
             printf("Enter message: \n");
             fgets(m_sending_data_buffer.data(), m_buffer_length, stdin);
 
             std::string_view sending_message(m_sending_data_buffer.data(), m_buffer_length);
             if (sending_message.starts_with("exit")) {
-                end_server_loop = true;
+                end_client_loop = true;
             }
 
             int error_code = sendto(m_socket, m_sending_data_buffer.data(), strlen(m_sending_data_buffer.data()), 0, (sockaddr*)&m_server_address, m_server_address_length);
@@ -522,6 +513,12 @@ namespace flpt {
 
             m_num_bytes_received = recvfrom(m_socket, m_incoming_data_buffer.data(), m_buffer_length, 0, (struct sockaddr*)&m_sender_address, &address_struct_length);
             if (m_num_bytes_received == SOCKET_ERROR) {
+                int error_code = WSAGetLastError();
+
+                if (error_code == WSAETIMEDOUT) {
+                    continue;
+                }
+
                 logError("Client Receive Bytes Failed with Error Code: %d\n", WSAGetLastError());
                 recordNetworkLoopError(ErrorCode::ClientReceiveBytesFailed);
                 if (failed_attempts < g_FlaschenpostNetworkRetries) {
@@ -538,7 +535,7 @@ namespace flpt {
 
             std::string_view message(m_incoming_data_buffer.data(), m_num_bytes_received);
             if (message.starts_with("quit")) {
-                end_server_loop = true;
+                end_client_loop = true;
             }
 
             failed_attempts = 0;
@@ -553,7 +550,74 @@ namespace flpt {
         }
     };
     void BaseSocket::ClientBroadcastLoop(std::stop_token stop_token) {
+        bool end_client_loop = false;
+        int failed_attempts = 0;
+        while (!stop_token.stop_requested() && !end_client_loop) {
+            // printf("Enter message: \n");
+            // fgets(m_sending_data_buffer.data(), m_buffer_length, stdin);
 
+            // std::string_view sending_message(m_sending_data_buffer.data(), m_buffer_length);
+            // if (sending_message.starts_with("exit")) {
+            //     end_client_loop = true;
+            // }
+
+            // std::memcpy(m_sending_data_buffer.data(), k_BroadcastMessage, k_BroadcastMessageLength);
+
+            logMessage("Searching for the Server...");
+            // int error_code = sendto(m_socket, m_sending_data_buffer.data(), k_BroadcastMessageLength, 0, (sockaddr*)&m_server_address, m_server_address_length);
+            int error_code = sendto(m_socket, k_BroadcastMessage, k_BroadcastMessageLength, 0, (sockaddr*)&m_server_address, m_server_address_length);
+            if (error_code == SOCKET_ERROR) {
+                logError("Client Send Bytes Failed with Error Code: %d", WSAGetLastError());
+                recordNetworkLoopError(ErrorCode::ClientSendBytesFailed);
+                if (failed_attempts < g_FlaschenpostNetworkRetries) {
+                    failed_attempts += 1;
+                    continue;
+                }else {
+                    break;
+                }
+            }
+
+            // memset(m_incoming_data_buffer, '\0', kServerBufferLength);
+            int address_struct_length = sizeof(m_sender_address);
+
+            m_num_bytes_received = recvfrom(m_socket, m_incoming_data_buffer.data(), m_buffer_length, 0, (struct sockaddr*)&m_sender_address, &address_struct_length);
+            if (m_num_bytes_received == SOCKET_ERROR) {
+                int error_code = WSAGetLastError();
+
+                if (error_code == WSAETIMEDOUT) {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    continue;
+                }
+
+                logError("Client Receive Bytes Failed with Error Code: %d\n", WSAGetLastError());
+                recordNetworkLoopError(ErrorCode::ClientReceiveBytesFailed);
+                if (failed_attempts < g_FlaschenpostNetworkRetries) {
+                    failed_attempts += 1;
+                    continue;
+                }else {
+                    break;
+                }
+            }
+
+            getnameinfo((sockaddr*)&m_sender_address, address_struct_length, m_host_data, NI_MAXHOST, m_service_data, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
+            printf("Received packet from %s:%s\n", m_host_data, m_service_data);
+            printf("Data: '%.*s', length: %i\n\n", m_num_bytes_received, m_incoming_data_buffer.data(), m_num_bytes_received); // Print with length
+
+            logMessage("Server Located!");
+            end_client_loop = true;
+            std::memcpy(&m_server_address, &m_sender_address, address_struct_length);
+            setSocketState(SocketState::AddressPrepped);
+
+            failed_attempts = 0;
+        }
+        if (failed_attempts >= g_FlaschenpostNetworkRetries) {
+            logError("Client to Server Connection Loop Aborted Due to Failed Attempts");
+        }else {
+            logMessage("Client to Server Connection Loop Ended");
+        }
+        if (getSocketState() == SocketState::ClientBroadcasting) {
+            setSocketState(SocketState::ClientBroadcastPrepped);
+        }
     };
     void BaseSocket::ClientMulticastLoop(std::stop_token stop_token) {
 

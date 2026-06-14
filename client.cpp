@@ -9,8 +9,8 @@
 // constexpr const char* kServerIPAddress = "127.0.0.1"; // i.e. localhost (IPv4)
 // constexpr const char* kServerIPAddress = "192.168.0.20"; // KrampusMeister (IPv4)
 // constexpr const char* kServerIPAddress = "fe80::5189:770e:49fb:7080%2"; // KrampusMeister
-constexpr const char* kServerIPAddress = "::1"; // localhost (IPv6)
-constexpr bool kUseIPv6 = false;
+// constexpr const char* kServerIPAddress = "::1"; // localhost (IPv6)
+// constexpr bool kUseIPv6 = false;
 constexpr int kServerBufferLength = 512;
 // constexpr int kServerPort = 8888;
 constexpr const char* kServerPort = "8888";
@@ -18,7 +18,7 @@ constexpr const char* kServerPort = "8888";
 /*
     IPv4Only        - Works with 127.0.0.1
     IPv6Only        - Works with ::1
-    Both_PreferIPv4 - Works with ::1
+    Both_PreferIPv4 - Works with ::1 (?)
     Both_PreferIPv6 - Works with ::1
 */
 
@@ -28,9 +28,10 @@ int main() {
     flpt::setFlptVerbosity(flpt::Verbosity::AllLogs);
     flpt::setFlptBufferLength(kServerBufferLength);
 
-    flpt::UDPClient m_client(flpt::Protocol::IPv6Only, kServerPort);
+    flpt::UDPClient m_client(flpt::Protocol::IPv4Only, kServerPort);
 
-    m_client.connectServer(kServerIPAddress);
+    // m_client.connectServer(kServerIPAddress);
+    m_client.broadcastLocateServer();
 
     while (m_client.isConnectedToServer()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));

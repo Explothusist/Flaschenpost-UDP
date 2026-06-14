@@ -10,6 +10,9 @@ namespace flpt {
     const char* k_IPv4BroadcastAll = "255.255.255.255";
     const char* k_IPv6MulticastAll = "ff02::1";
 
+    const char* k_BroadcastMessage = "FLPT Broadcasting Find Server";
+    const int k_BroadcastMessageLength = 30;
+
     Verbosity g_FlaschenpostVerbosity = Verbosity::ErrorLogs;
     std::string g_FlaschenpostLastError = "No Error";
 
@@ -112,6 +115,14 @@ namespace flpt {
                 return "Client Send Bytes Failed with Error";
             case ErrorCode::ClientReceiveBytesFailed:
                 return "Client Receive Bytes Failed with Error";
+            case ErrorCode::AttemptingToPrepBroadcastOnServer:
+                return "Cannot Prep Broadcast Address on Server";
+            case ErrorCode::BroadcastOnIPv6Only:
+                return "Broadcast is IPv4 Only, Use Multicast for IPv6";
+            case ErrorCode::ClientBroadcastBeforePrepBroadcast:
+                return "Socket Broadcast Address Must be Prepped Before Starting Broadcasting";
+            case ErrorCode::ServerCouldNotBeLocated:
+                return "Server could not be located by the client";
             
             default:
                 return "Unknown Error";
@@ -131,6 +142,8 @@ namespace flpt {
             case SocketState::ClientBroadcasting: return 5;
             case SocketState::ClientMulticasting: return 5;
             case SocketState::ServerListening: return 5;
+            case SocketState::ClientBroadcastPrepped: return 3;
+            case SocketState::ClientMulticastPrepped: return 3;
         }
         logError("Unknown State: %d", state);
         return -1;
